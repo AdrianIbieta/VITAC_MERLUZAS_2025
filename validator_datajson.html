@@ -1,0 +1,58 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<title>VITAC data.json - Validador</title>
+<style>
+ body { font-family: Arial, sans-serif; margin: 20px; }
+ pre { background:#f7f7f7; border:1px solid #ddd; padding:12px; overflow:auto; }
+ .ok{color:green;font-weight:700} .bad{color:#b00020;font-weight:700}
+ li { margin-bottom:6px; }
+</style>
+</head>
+<body>
+<h1>Validador de <code>data.json</code></h1>
+<p>Este archivo revisa la estructura esperada por el visualizador.</p>
+<ol id="checks"></ol>
+<h3>Primeros 400 caracteres de data.json</h3>
+<pre id="preview"></pre>
+<script>
+const DATA_URL='data.json?v='+Date.now();
+const checksEl=document.getElementById('checks');
+const previewEl=document.getElementById('preview');
+function add(msg, ok){ const li=document.createElement('li'); li.innerHTML=(ok?'<span class="ok">✔</span> ':'<span class="bad">✖</span> ')+msg; checksEl.appendChild(li); }
+(async function(){
+  try{
+    const res=await fetch(DATA_URL,{cache:'no-store'});
+    add('Respuesta HTTP '+res.status, res.ok);
+    const txt=await res.text();
+    previewEl.textContent=txt.slice(0,400);
+    let j;
+    try{ j=JSON.parse(txt); add('JSON válido (parseado correctamente)', true); }
+    catch(e){ add('JSON inválido: '+e.message, false); return; }
+    const hasLances=Array.isArray(j.lances) && j.lances.length>0;
+    add('Propiedad "lances" es un ARRAY y no está vacío', hasLances);
+    if(hasLances){ add('Ejemplo lances: '+JSON.stringify(j.lances.slice(0,10)), true); }
+    const hasFreq=j.freq && j.freq.Mcola && j.freq.Msur;
+    add('Bloques freq.Mcola y freq.Msur presentes', !!hasFreq);
+    if(hasFreq){
+      const k=j.lances[0];
+      const arrM=j.freq.Mcola[k];
+      const arrS=j.freq.Msur[k];
+      add('freq.Mcola['+k+'] con 22 números', Array.isArray(arrM)&&arrM.length===22);
+      add('freq.Msur['+k+'] con 22 números', Array.isArray(arrS)&&arrS.length===22);
+    }
+    const hasDonut=j.donut && j.donut[j.lances?j.lances[0]:null];
+    add('Bloque donut con primer lance', !!hasDonut);
+    const hasInfo=j.info && j.info[j.lances?j.lances[0]:null];
+    add('Bloque info con primer lance', !!hasInfo);
+    const hasCoords=j.coords && j.coords[j.lances?j.lances[0]:null];
+    add('Bloque coords con primer lance', !!hasCoords);
+  }catch(e){
+    add('Error cargando data.json: '+e.message, false);
+  }
+})();
+</script>
+</body>
+</html>
